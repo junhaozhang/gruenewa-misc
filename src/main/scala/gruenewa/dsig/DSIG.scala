@@ -36,7 +36,7 @@ object DSIG {
 
   import scala.xml.Node
 
-  private lazy val sigFactory =  XMLSignatureFactory.getInstance("DOM")
+  private lazy val xmlSignatureFactory =  XMLSignatureFactory.getInstance("DOM")
 
   def sign(certificate: X509Certificate, 
            privateKey: PrivateKey, 
@@ -44,15 +44,16 @@ object DSIG {
            signatureMethod: String = SignatureMethod.RSA_SHA1, 
            c14nMethod: String = CanonicalizationMethod.INCLUSIVE)(xml: Node): Node = {
     
-    val digestAlg = sigFactory.newDigestMethod(digestMethod, null)
-    val transform = sigFactory.newTransform(Transform.ENVELOPED, null.asInstanceOf[TransformParameterSpec])
-    val reference = sigFactory.newReference("", digestAlg, singletonList(transform), null, null)
+    val digestAlg = xmlSignatureFactory.newDigestMethod(digestMethod, null)
+    val transform = xmlSignatureFactory.newTransform(Transform.ENVELOPED, null.asInstanceOf[TransformParameterSpec])
+    val signatureAlg = xmlSignatureFactory.newSignatureMethod(signatureMethod, null)
+    val c14nAlg = xmlSignatureFactory.newCanonicalizationMethod(c14nMethod, null.asInstanceOf[C14NMethodParameterSpec]) 
 
-    val signatureAlg = sigFactory.newSignatureMethod(signatureMethod, null)
-    val c14nAlg = sigFactory.newCanonicalizationMethod(c14nMethod, null.asInstanceOf[C14NMethodParameterSpec]) 
-    val signedInfo = sigFactory.newSignedInfo(c14nAlg, signatureAlg, singletonList(reference))
+    val reference = xmlSignatureFactory.newReference("", digestAlg, singletonList(transform), null, null)
 
-    val keyInfoFactory = sigFactory.getKeyInfoFactory()
+    val signedInfo = xmlSignatureFactory.newSignedInfo(c14nAlg, signatureAlg, singletonList(reference))
+
+    val keyInfoFactory = xmlSignatureFactory.getKeyInfoFactory()
     val x509Content = new java.util.ArrayList[AnyRef]()
     x509Content.add(certificate.getSubjectX500Principal().getName())
     x509Content.add(certificate)
@@ -63,49 +64,48 @@ object DSIG {
 
     val context = new DOMSignContext(privateKey, doc.getDocumentElement())
     
-    val signature = sigFactory.newXMLSignature(signedInfo, keyInfo)
+    val signature = xmlSignatureFactory.newXMLSignature(signedInfo, keyInfo)
   
     signature.sign(context)
 
     DOMUtils.asXML(doc)
   }
 
-  def validate(keySelector: KeySelector = X509KeySelector)(xml: Node) = {
+  sealed trait ValidationResult
+  case object Success extends ValidationResult
+  case object Failure extends ValidationResult
+  case object Missing extends ValidationResult
+
+  def validate(keySelector: KeySelector = X509KeySelector)(xml: Node): ValidationResult = {
 
     val doc = DOMUtils.asDOC(xml)
 
     val elems = doc.getElementsByTagNameNS(XMLSignature.XMLNS, "Signature")
     if (elems.getLength() == 0) {
-      throw new Exception("Cannot find Signature")
+      Missing
     }
-
-    val valContext = new DOMValidateContext(keySelector, elems.item(0))
+    else {
+      val valContext = new DOMValidateContext(keySelector, elems.item(0))
   
-    val signature = sigFactory.unmarshalXMLSignature(valContext)
+      val signature = xmlSignatureFactory.unmarshalXMLSignature(valContext)
 
-    val validationSuccess = signature.validate(valContext)
+      // returns "true" if the signature validates successfully
+      // according to the core validation rules in the W3C XML Signature
+      // Recommendation, and false otherwise
+      val validationSuccess = signature.validate(valContext)
 
-    if (!validationSuccess) {
-      println("Signature validation failed")
-      val sv = signature.getSignatureValue().validate(valContext)
-      println("signature validation status: " + sv)
-      if (!sv) {
-
-        val i = signature.getSignedInfo().getReferences().iterator()
-        var j = 0
-        while (i.hasNext()) {
-          val refValid = i.next().asInstanceOf[Reference].validate(valContext)
-          println("ref["+j+"] validity status: " + refValid)
-          j += 1 
-        }
-      }
+      if (validationSuccess) 
+        Success
+      else
+        Failure
     }
-
-    validationSuccess
   }
 }
 
-
+/*
+ * KeySelectors are used to find and select keys that are needed to
+ * validate an XMLSignature.
+ */
 object X509KeySelector extends javax.xml.crypto.KeySelector {
 
   import javax.xml.crypto._
@@ -118,16 +118,16 @@ object X509KeySelector extends javax.xml.crypto.KeySelector {
   import java.security.cert.X509Certificate
 
   def select(keyInfo: KeyInfo, purpose: KeySelector.Purpose, method: AlgorithmMethod, context: XMLCryptoContext): KeySelectorResult =  {
-    val ki = keyInfo.getContent().iterator()
-    while (ki.hasNext()) {
-      val info = ki.next().asInstanceOf[XMLStructure]
+
+    import scala.collection.JavaConversions._
+    
+    for( ki <- keyInfo.getContent()) {
+      val info = ki.asInstanceOf[XMLStructure]
       if (info.isInstanceOf[X509Data]) {
         val x509Data = info.asInstanceOf[X509Data]
-        val xi = x509Data.getContent().iterator()
-        while (xi.hasNext()) {
-          val o = xi.next()
-          if (o.isInstanceOf[X509Certificate]) {
-            val key = o.asInstanceOf[X509Certificate].getPublicKey()
+        for(xi <- x509Data.getContent()) {
+          if (xi.isInstanceOf[X509Certificate]) {
+            val key = xi.asInstanceOf[X509Certificate].getPublicKey()
             if (checkAlgorithm(method.getAlgorithm(), key.getAlgorithm())) {
               return new KeySelectorResult() {
                 def getKey() = key
@@ -137,6 +137,7 @@ object X509KeySelector extends javax.xml.crypto.KeySelector {
         }
       }
     }
+
     throw new KeySelectorException("Couln't find matching key!")
   }
 
@@ -186,9 +187,8 @@ object ARM {
     try {
       block(resource)
     } finally {
-      if (resource != null) {
+      if (resource != null) 
         resource.close()
-      }
     }
   }
 }
