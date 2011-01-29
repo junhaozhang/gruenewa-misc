@@ -1,0 +1,8 @@
+*~
+boot
+target
+lib_managed
+src_managed
+.classpath
+.project
+.scala_dependencies
