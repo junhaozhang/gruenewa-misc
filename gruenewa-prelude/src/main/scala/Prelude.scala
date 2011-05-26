@@ -63,10 +63,10 @@ package object prelude {
     result
   }
 
-  def toHex(buf: Array[Byte]): String = buf.map("%02x" format _).mkString
+  def toHex(buf: Array[Byte]): String = 
+    buf.map("%02x" format _).mkString
 
   def checkSum(method: String, inputStream: => InputStream) =  {
-        
     using(inputStream) { is =>
       val bytes = new Array[Byte](4096)
       val md = java.security.MessageDigest.getInstance(method)
@@ -81,8 +81,10 @@ package object prelude {
     }
   }
 
-  def md5(inputStream: => InputStream) = checkSum("MD5", inputStream)
+  def md5(inputStream: => InputStream) = 
+    checkSum("MD5", inputStream) |> toHex
 
-  def sha1(inputStream: => InputStream) = checkSum("SHA1", inputStream)
+  def sha1(inputStream: => InputStream) = 
+    checkSum("SHA1", inputStream) |> toHex
 
 }
