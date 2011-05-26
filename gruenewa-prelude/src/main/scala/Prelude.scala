@@ -59,7 +59,8 @@ package object prelude {
   def time[F](f: => F) = {
     val t0 = System.nanoTime
     val result = f
-    printf("Elapsed: %.3f\n",1e-9*(System.nanoTime-t0))
+    val t1 = System.nanoTime
+    printf("Elapsed: %.9f secs\n",1e-9*(t1-t0))
     result
   }
 
