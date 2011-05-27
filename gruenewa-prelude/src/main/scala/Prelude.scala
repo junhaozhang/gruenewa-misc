@@ -24,7 +24,9 @@ package object prelude {
 
   import java.io.{InputStream, OutputStream}
 
-  def using[T <: { def close() }, A](resource: T)(block: T => A): A = {
+  type Closable = { def close() }
+  
+  def using[T <: Closable, A](resource: T)(block: T => A): A = {
     try {
       block(resource)
     } finally {
@@ -34,7 +36,7 @@ package object prelude {
     }
   }
 
-  def manage[T <: { def close() }, A](resource: T)(block: => A): A = {
+  def managed[T <: Closable, A](resource: T)(block: => A): A = {
     using(resource) { ignore => block }
   }
 
