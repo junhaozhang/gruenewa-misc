@@ -22,8 +22,6 @@ package gruenewa
 
 package object prelude {
 
-  import java.io.{InputStream, OutputStream}
-
   type Closable = { def close() }
   
   def using[T <: Closable, A](resource: T)(block: T => A): A = {
@@ -33,21 +31,6 @@ package object prelude {
       if (resource != null) {
         resource.close()
       }
-    }
-  }
-
-  def managed[T <: Closable, A](resource: T)(block: => A): A = {
-    using(resource) { ignore => block }
-  }
-
-  /**
-   * Copies the input stream into the output stream.
-   */ 
-  def transfer(in: InputStream, out: OutputStream) = {
-    val buf = new Array[Byte](100*1024)
-    var len = 0
-    while({len = in.read(buf, 0, buf.length); len != -1}){ 
-      out.write(buf, 0, len)
     }
   }
 
@@ -62,32 +45,8 @@ package object prelude {
     val t0 = System.nanoTime
     val result = f
     val t1 = System.nanoTime
-    printf("Elapsed: %.9f secs\n",1e-9*(t1-t0))
+    printf("Elapsed: %.9f secs\n", 1e-9*(t1-t0))
     result
   }
-
-  def toHex(buf: Array[Byte]): String = 
-    buf.map("%02x" format _).mkString
-
-  def checkSum(method: String, inputStream: => InputStream) =  {
-    using(inputStream) { is =>
-      val bytes = new Array[Byte](4096)
-      val md = java.security.MessageDigest.getInstance(method)
-      var len = 0;
-      do {
-        len = is.read(bytes)
-        if(len > 0)
-          md.update(bytes, 0, len);
-      } while (len >= 0)
-      
-      md.digest()
-    }
-  }
-
-  def md5(inputStream: => InputStream) = 
-    checkSum("MD5", inputStream) |> toHex
-
-  def sha1(inputStream: => InputStream) = 
-    checkSum("SHA1", inputStream) |> toHex
 
 }
