@@ -22,6 +22,20 @@ package gruenewa
 
 package object prelude {
 
+  /**
+   * Thrush combinator that allows to use
+   * F# pipline syntax when in scope.
+   */
+  final class Thrush[A](a: A) {
+    def |>[B](f: A => B): B = f(a)
+  }
+
+  implicit def |>[A](a: => A) = new Thrush(a)
+
+  /**
+   * Using statement that models an ARM block
+   * to auto-close resources.
+   */ 
   type Closable = { def close() }
   
   def using[T <: Closable, A](resource: T)(block: T => A): A = {
@@ -35,12 +49,8 @@ package object prelude {
   }
 
   /**
-   * Parser combinator that allows to use pipline syntax when in scope.
-   */
-  implicit def |>[A](a: =>A) = new {
-    def |>[B](f: A => B) = f(a)
-  }
-
+   * Very simple time measurement function.
+   */ 
   def time[F](f: => F) = {
     val t0 = System.nanoTime
     val result = f
