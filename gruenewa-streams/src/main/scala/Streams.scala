@@ -35,6 +35,18 @@ package object streams {
     }
   }
 
+  def slurp(in: InputStream): Array[Byte] = {
+
+    val out = new java.io.ByteArrayOutputStream()
+
+    try {
+      transfer(in, out)
+      out.toByteArray()
+    } finally {
+      out.close()
+    }
+  }
+
   def toHex(buf: Array[Byte]): String = 
     buf.map("%02x" format _).mkString
 

@@ -48,6 +48,13 @@ package object prelude {
     }
   }
 
+  def wrapException[T](block: => T): Either[Throwable, T] =    
+    try {
+      Right(block)
+    } catch {
+      case e => Left(e)
+    }
+
   /**
    * Very simple time measurement function.
    */ 
