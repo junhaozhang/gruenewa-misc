@@ -61,10 +61,10 @@ class CircuitBreaker(val threshold: Int, val timeout: Long, val systime: () => L
 
     try {
       val o = f
-      this.state = onSuccess(systime(), state)
+      this.state = onSuccess(systime(), this.state)
       o
     } catch {
-      case e => this.state = onFailure(systime(), state); throw e
+      case e => this.state = onFailure(systime(), this.state); throw e
     }
   }
 }
