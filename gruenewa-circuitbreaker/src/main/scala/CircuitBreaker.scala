@@ -18,15 +18,16 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 package gruenewa.circuitbreaker
-  
-sealed trait State { 
-  val threshold: Int
-  val timeout: Long
-}
-case class Closed(val threshold: Int, val timeout: Long, failureCount: Int) extends State
-case class Open(val threshold: Int, val timeout: Long, tripTime: Long) extends State
 
 object CircuitBreaker {
+  
+  sealed trait State { 
+    val threshold: Int
+    val timeout: Long
+  }
+  
+  case class Closed(val threshold: Int, val timeout: Long, failureCount: Int) extends State
+  case class Open(val threshold: Int, val timeout: Long, tripTime: Long) extends State
 
   def isClosed(time: Long, state: State) =
     state match {
@@ -45,20 +46,26 @@ object CircuitBreaker {
     }
 }    
 
+// val cb = new gruenewa.circuitbreaker.CircuitBreaker(2, 1000, System.currentTimeMillis _)
 
-class CircuitBreakerControl(val threshold: Int, val timeout: Long, val systime: () => Long) {
+class CircuitBreaker(val threshold: Int, val timeout: Long, val systime: () => Long) {
+  
+  import CircuitBreaker._
 
   @volatile
   var state: State = Closed(threshold, timeout, 0)
 
-  def isClosed() = CircuitBreaker.isClosed(systime(), state)
+  def apply[F](f: => F): F = {
+    if(!isClosed(systime(), this.state)) 
+      throw CircuitBreakerException
 
-  def onSuccess() {
-    state = CircuitBreaker.onSuccess(systime(), state)
-  }
-  
-  def onFailure() {
-    state = CircuitBreaker.onFailure(systime(), state)
+    try {
+      val o = f
+      this.state = onSuccess(systime(), state)
+      o
+    } catch {
+      case e => this.state = onFailure(systime(), state); throw e
+    }
   }
 }
 
@@ -70,46 +77,19 @@ class InvocationHandler(val threshold: Int, val timeout: Long, val systime: () =
 
   import java.lang.reflect.{Method, InvocationTargetException}
 
-  val control = new CircuitBreakerControl(threshold, timeout, systime)
+  val cb = new CircuitBreaker(threshold, timeout, systime)
 
-  def invoke(proxy: AnyRef, m: Method, args: Array[AnyRef]): AnyRef = {
-    if(!control.isClosed()) 
-      throw CircuitBreakerException
-    
-    wrapException(m.invoke(args)) match {
-      case Right(o) => control.onSuccess(); o
-      case Left(e) => control.onFailure(); throw e
-    }
-  }
+  def invoke(proxy: AnyRef, m: Method, args: Array[AnyRef]): AnyRef =
+    cb.apply(m.invoke(args))
 
-  def wrapException[T](block: => T): Either[Throwable, T] =
-    try {
-      Right(block)
-    } catch {
-      case e: InvocationTargetException => Left(e.getTargetException())
-      case e => Left(e)
-    }
 }
 
 import org.aopalliance.intercept.{MethodInterceptor, MethodInvocation}
 
 class CircuitBreakerInterceptor(val threshold: Int, val timeout: Long, val systime: () => Long) extends MethodInterceptor {
 
-  val control = new CircuitBreakerControl(threshold, timeout, systime)
+  val cb = new CircuitBreaker(threshold, timeout, systime)
 
-  def invoke(i: MethodInvocation): AnyRef = 
-    if(!control.isClosed()) 
-      throw CircuitBreakerException
-    else
-      wrapException(i.proceed()) match {
-        case Right(o) => control.onSuccess(); o
-        case Left(e) => control.onFailure(); throw e
-      }
+  def invoke(i: MethodInvocation): AnyRef = cb.apply(i.proceed()) 
 
-  def wrapException[T](block: => T): Either[Throwable, T] =
-    try {
-      Right(block)
-    } catch {
-      case e => Left(e)
-    }
 }
