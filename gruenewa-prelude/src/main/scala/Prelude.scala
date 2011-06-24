@@ -58,12 +58,14 @@ package object prelude {
   /**
    * Very simple time measurement function.
    */ 
-  def time[F](f: => F) = {
+  def time[T](block: => T) = {
     val t0 = System.nanoTime
-    val result = f
-    val t1 = System.nanoTime
-    printf("elapsed: %.6f ms\n", 1e-6*(t1-t0))
-    result
+    try {
+      block
+    } finally {
+      val t1 = System.nanoTime
+      printf("elapsed: %.6f ms\n", 1e-6*(t1-t0))
+    }
   }
 
   /**
