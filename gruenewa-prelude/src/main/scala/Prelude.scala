@@ -62,7 +62,7 @@ package object prelude {
     val t0 = System.nanoTime
     val result = f
     val t1 = System.nanoTime
-    printf("Elapsed: %.9f secs\n", 1e-9*(t1-t0))
+    printf("elapsed: %.6f ms\n", 1e-6*(t1-t0))
     result
   }
 
