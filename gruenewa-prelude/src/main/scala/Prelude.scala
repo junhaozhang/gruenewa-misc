@@ -30,6 +30,7 @@ package object prelude {
     def |>[B](f: A => B): B = f(a)
   }
 
+  @inline
   implicit def |>[A](a: => A) = new Thrush(a)
 
   /**
@@ -38,6 +39,7 @@ package object prelude {
    */ 
   type Closable = { def close() }
   
+  @inline
   def using[T <: Closable, A](resource: T)(block: T => A): A = {
     try {
       block(resource)
@@ -48,6 +50,7 @@ package object prelude {
     }
   }
 
+  @inline
   def wrapException[T](block: => T): Either[Throwable, T] =    
     try {
       Right(block)
@@ -58,6 +61,7 @@ package object prelude {
   /**
    * Very simple time measurement function.
    */ 
+  @inline
   def time[T](block: => T) = {
     val t0 = System.nanoTime
     try {
@@ -85,5 +89,4 @@ package object prelude {
     
     task.get(timeout, TimeUnit.MILLISECONDS)  
   }
-
 }
