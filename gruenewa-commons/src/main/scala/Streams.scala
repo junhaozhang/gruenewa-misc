@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 by Alexander Grünewald
+ * Copyright (c) 2011-2012 by Alexander Grünewald
  * 
  * This file is part of gruenewa-streams, a collection of generally
  * useful utility functions.
@@ -20,6 +20,8 @@
 
 package gruenewa
 
+import prelude.using
+
 import java.io.{InputStream, OutputStream}
 
 package object streams {
@@ -27,6 +29,7 @@ package object streams {
   /**
    * Copies the input stream into the output stream.
    */ 
+  @inline
   def transfer(in: InputStream, out: OutputStream) = {
     val buf = new Array[Byte](100*1024)
     var len = 0
@@ -35,15 +38,11 @@ package object streams {
     }
   }
 
+  @inline
   def slurp(in: InputStream): Array[Byte] = {
-
-    val out = new java.io.ByteArrayOutputStream()
-
-    try {
+    using(new java.io.ByteArrayOutputStream()) { out =>
       transfer(in, out)
       out.toByteArray()
-    } finally {
-      out.close()
     }
   }
 
@@ -52,9 +51,7 @@ package object streams {
 
   def checksum(method: String, inputStream: () => InputStream) =  {
 
-    val is = inputStream()
-
-    try {
+    using(inputStream()) { is =>
       val bytes = new Array[Byte](4096)
       val md = java.security.MessageDigest.getInstance(method)
       var len = 0;
@@ -65,8 +62,6 @@ package object streams {
       } while (len >= 0)
       
       md.digest()
-    } finally {
-      is.close()
     }
   }
 

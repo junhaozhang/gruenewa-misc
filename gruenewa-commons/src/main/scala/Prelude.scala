@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 by Alexander Grünewald
+ * Copyright (c) 2011-2012 by Alexander Grünewald
  * 
  * This file is part of gruenewa-prelude, a collection of generally
  * useful utility functions.
