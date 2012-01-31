@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2011-2012 by Alexander Grünewald
  * 
- * This file is part of gruenewa-streams, a collection of generally
+ * This file is part of gruenewa-commons, a collection of generally
  * useful utility functions.
  *
- * gruenewa-grid is free software: you can redistribute it and/or modify
+ * gruenewa-commons is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
