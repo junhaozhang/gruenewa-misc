@@ -37,7 +37,7 @@ package object http {
   type HttpExchange = HttpEx
 
   def createHttpServer(port: Int = 8080) = {
-    val addr  = new InetSocketAddress("localhost", 8000);
+    val addr  = new InetSocketAddress("localhost", port);
     HttpServer.create(addr, port);
   }
 
