@@ -26,15 +26,20 @@ import java.io._
 import javax.net.ssl.{SSLContext, KeyManagerFactory, TrustManagerFactory}
 import java.security.{KeyStore, SecureRandom}
 
-import com.sun.net.httpserver.{HttpsConfigurator, HttpServer, HttpsServer, HttpExchange => HttpEx, HttpHandler, BasicAuthenticator}
+import com.sun.net.httpserver.{
+  HttpsConfigurator, 
+  HttpServer, 
+  HttpsServer, 
+  HttpContext, 
+  HttpExchange, 
+  HttpHandler, 
+  BasicAuthenticator}
 
 import java.net.InetSocketAddress
 
 // keytool -genkey -alias localhost -keyalg RSA -keystore keystore.jks -keysize 2048
 
 package object http {
-
-  type HttpExchange = HttpEx
 
   def createHttpServer(port: Int = 8080) = {
     val addr  = new InetSocketAddress("localhost", port);
@@ -70,17 +75,29 @@ package object http {
     httpsServer
   }
 
-  implicit def wrapHttpHandler(f: HttpExchange => Unit) = {
-    new HttpHandler() {
-      override def handle(e: HttpExchange) = f(e)
-    }
-  }
+  implicit def pimp(ctx: HttpContext) = new RichHttpContext(ctx)
 
-  def createBasicAuth(f: (String, String) => Boolean)(path: String) = {
-    new BasicAuthenticator(path) {
-      override def checkCredentials(username: String, password: String) = {
-	f(username, password)
-      }
+  class RichHttpContext(underlying: HttpContext) {
+    
+    def basicAuth(realm: String)(verify: (String, String) => Boolean) = {
+      underlying.setAuthenticator (
+	new BasicAuthenticator(realm) {
+	  override def checkCredentials(username: String, password: String) = {
+	    verify(username, password)
+	  }
+	})
+      
+      underlying
+    }
+
+    def handle(callback: HttpExchange => Unit) = {
+      underlying.setHandler(new HttpHandler() {
+	def handle(exchange: HttpExchange) {
+	  callback(exchange)
+	}
+      })
+
+      underlying
     }
   }
 }
