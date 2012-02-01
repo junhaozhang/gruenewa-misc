@@ -41,16 +41,18 @@ import java.net.InetSocketAddress
 
 package object http {
 
-  def createHttpServer(port: Int = 8080) = {
+  implicit def pimp(ctx: HttpContext) = new RichHttpContext(ctx)
+
+  def HTTP(port: Int = 8080) = {
     val addr  = new InetSocketAddress("localhost", port);
     HttpServer.create(addr, port);
   }
 
-  def createHttpsServer(
+  def HTTPS(
     keystoreFile: String = "keystore.jks",
     keystorePass: String = "changeit",
     keyPass: String = "changeit",
-    port: Int = 8080) = {
+    port: Int = 8443) = {
 
     val keyFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm)
     val keystore =  KeyStore.getInstance("JKS")
@@ -75,25 +77,23 @@ package object http {
     httpsServer
   }
 
-  implicit def pimp(ctx: HttpContext) = new RichHttpContext(ctx)
-
   class RichHttpContext(underlying: HttpContext) {
     
-    def basicAuth(realm: String)(verify: (String, String) => Boolean) = {
+    def useBasicAuth(realm: String)(check: (String, String) => Boolean) = {
       underlying.setAuthenticator (
 	new BasicAuthenticator(realm) {
 	  override def checkCredentials(username: String, password: String) = {
-	    verify(username, password)
+	    check(username, password)
 	  }
 	})
       
       underlying
     }
 
-    def handle(callback: HttpExchange => Unit) = {
+    def withHandler(handler: HttpExchange => Unit) = {
       underlying.setHandler(new HttpHandler() {
 	def handle(exchange: HttpExchange) {
-	  callback(exchange)
+	  handler(exchange)
 	}
       })
 
