@@ -44,7 +44,7 @@ package object http {
   implicit def pimp(ctx: HttpContext) = new RichHttpContext(ctx)
 
   def HTTP(port: Int = 8080) = {
-    val addr  = new InetSocketAddress("localhost", port);
+    val addr  = new InetSocketAddress(port);
     HttpServer.create(addr, port);
   }
 
@@ -70,7 +70,7 @@ package object http {
 
     val configurator = new HttpsConfigurator(ssl);
 
-    val httpsServer = HttpsServer.create(new InetSocketAddress("localhost", port), port);
+    val httpsServer = HttpsServer.create(new InetSocketAddress(port), port);
 
     httpsServer.setHttpsConfigurator(configurator);
 
